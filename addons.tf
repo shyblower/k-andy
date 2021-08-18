@@ -1,7 +1,8 @@
 data "template_file" "ccm_manifest" {
-  template = file("${path.module}/manifests/ccm-networks.yaml")
+  template = file("${path.module}/manifests/hcloud-ccm-net.yaml")
   vars = {
     hcloud_ccm_version = var.hcloud_ccm_version
+    cluster_cidr = var.cluster_cidr
   }
 }
 
