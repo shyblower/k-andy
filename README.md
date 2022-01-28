@@ -4,12 +4,12 @@
 
 ### Zero friction Kubernetes stack on Hetzner Cloud
 
-This [terraform](https://www.terraform.io/) script will install a High Availability [K3s](https://k3s.io/) Cluster with Embedded DB in a private network on [Hetzner Cloud](https://www.hetzner.com/de/cloud). The following resources are provisionised by default (**17€/mo or 0.00039/min**):
+This [terraform](https://www.terraform.io/) module will install a High Availability [K3s](https://k3s.io/) Cluster with Embedded DB in a private network on [Hetzner Cloud](https://www.hetzner.com/de/cloud). The following resources are provisionised by default (**20€/mo**):
 
-- 2x Control-plane: _CX11_, 2GB RAM, 1VCPU, 20GB NVMe, 20TB Traffic.
+- 3x Control-plane: _CX11_, 2GB RAM, 1VCPU, 20GB NVMe, 20TB Traffic.
 - 2x Worker: _CX21_, 4GB RAM, 2VCPU, 40GB NVMe, 20TB Traffic.
 - Network: Private network with one subnet.
-- Server and agent nodes are distributed across 2 Datacenter (nbg1, fsn1) for high availability.
+- Server and agent nodes are distributed across 3 Datacenters (nbg1, fsn1, hel1) for high availability.
 
 </br>
 </br>
@@ -25,64 +25,69 @@ We provide an example how to upgrade your K3s node and agents with the [system-u
 
 **What is K3s?**
 
-K3s is a lightweight certified kubernetes distribution. It's packaged as single binary and comes with solid defaults for storage and networking but we replaced [local-path-provisioner](https://github.com/rancher/local-path-provisioner) with hetzner [CSI-driver](https://github.com/hetznercloud/csi-driver) and [klipper load-balancer](https://github.com/k3s-io/klipper-lb) with hetzner [Cloud Controller Manager](https://github.com/hetznercloud/hcloud-cloud-controller-manager). The Ingress controller (traefik) has been disabled because K3s provides an old version of traefik < 2. We prefer to install traefik v2 or a different controller.
+K3s is a lightweight certified kubernetes distribution. It's packaged as single binary and comes with solid defaults for storage and networking but we replaced [local-path-provisioner](https://github.com/rancher/local-path-provisioner) with hetzner [CSI-driver](https://github.com/hetznercloud/csi-driver) and [klipper load-balancer](https://github.com/k3s-io/klipper-lb) with hetzner [Cloud Controller Manager](https://github.com/hetznercloud/hcloud-cloud-controller-manager). The default ingress controller (traefik) has been disabled.
 
 ## Usage
 
-Run the following command to create a cluster.
+See a more detailed example with walk-through in the [example folder](./example).
 
-```sh
-terraform init
-terraform apply \
-    -var "hcloud_token=${hcloud_token}" \
-    -var "private_key=${private_key_location}" \
-    -var "public_key=${public_key_location}"
+<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+### Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_agent_groups"></a> [agent\_groups](#input\_agent\_groups) | Configuration of agent groups | <pre>map(object({<br>    type      = string<br>    count     = number<br>    ip_offset = number<br>  }))</pre> | <pre>{<br>  "default": {<br>    "count": 2,<br>    "ip_offset": 33,<br>    "type": "cx21"<br>  }<br>}</pre> | no |
+| <a name="input_control_plane_server_count"></a> [control\_plane\_server\_count](#input\_control\_plane\_server\_count) | Number of control plane nodes | `number` | `3` | no |
+| <a name="input_control_plane_server_type"></a> [control\_plane\_server\_type](#input\_control\_plane\_server\_type) | Server type of control plane servers | `string` | `"cx11"` | no |
+| <a name="input_create_kubeconfig"></a> [create\_kubeconfig](#input\_create\_kubeconfig) | Create a local kubeconfig file to connect to the cluster | `bool` | `true` | no |
+| <a name="input_hcloud_csi_driver_version"></a> [hcloud\_csi\_driver\_version](#input\_hcloud\_csi\_driver\_version) | n/a | `string` | `"v1.5.3"` | no |
+| <a name="input_hcloud_token"></a> [hcloud\_token](#input\_hcloud\_token) | Token to authenticate against Hetzner Cloud | `any` | n/a | yes |
+| <a name="input_k3s_version"></a> [k3s\_version](#input\_k3s\_version) | K3s version | `string` | `"v1.21.3+k3s1"` | no |
+| <a name="input_kubeconfig_filename"></a> [kubeconfig\_filename](#input\_kubeconfig\_filename) | Specify the filename of the created kubeconfig file (defaults to kubeconfig-${var.name}.yaml | `any` | `null` | no |
+| <a name="input_name"></a> [name](#input\_name) | Cluster name (used in various places, don't use special chars) | `any` | n/a | yes |
+| <a name="input_network_cidr"></a> [network\_cidr](#input\_network\_cidr) | Network in which the cluster will be placed | `string` | `"10.0.0.0/16"` | no |
+| <a name="input_server_additional_packages"></a> [server\_additional\_packages](#input\_server\_additional\_packages) | Additional packages which will be installed on node creation | `list(string)` | `[]` | no |
+| <a name="input_server_locations"></a> [server\_locations](#input\_server\_locations) | Server locations in which servers will be distributed | `list(string)` | <pre>[<br>  "nbg1",<br>  "fsn1",<br>  "hel1"<br>]</pre> | no |
+| <a name="input_ssh_private_key_location"></a> [ssh\_private\_key\_location](#input\_ssh\_private\_key\_location) | Use this private SSH key instead of generating a new one (Attention: Encrypted keys are not supported) | `string` | `null` | no |
+| <a name="input_subnet_cidr"></a> [subnet\_cidr](#input\_subnet\_cidr) | Subnet in which all nodes are placed | `string` | `"10.0.1.0/24"` | no |
+
+### Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_agents_public_ips"></a> [agents\_public\_ips](#output\_agents\_public\_ips) | The public IP addresses of the agent servers |
+| <a name="output_control_planes_public_ips"></a> [control\_planes\_public\_ips](#output\_control\_planes\_public\_ips) | The public IP addresses of the control plane servers |
+| <a name="output_k3s_token"></a> [k3s\_token](#output\_k3s\_token) | Secret k3s authentication token |
+| <a name="output_kubeconfig"></a> [kubeconfig](#output\_kubeconfig) | Structured kubeconfig data to supply to other providers |
+| <a name="output_kubeconfig_file"></a> [kubeconfig\_file](#output\_kubeconfig\_file) | Kubeconfig file content with external IP address |
+| <a name="output_network_id"></a> [network\_id](#output\_network\_id) | n/a |
+| <a name="output_ssh_private_key"></a> [ssh\_private\_key](#output\_ssh\_private\_key) | Key to SSH into nodes |
+<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+## Common Operations
+
+### Agent server replacement
+
+If you need to cycle an agent, you can do that with a single node following this procedure.
+Replace the group name and number with the server you want to recreate!
+
+Make sure you drain the nodes first. 
+
+```shell
+terraform taint 'module.my_cluster.module.agent_group["GROUP_NAME"].random_pet.agent_suffix[1]'
+terraform apply
 ```
 
-## Cluster access
+This will recreate the agent in that group on next apply.
 
-`terraform apply` will copy the kubeconfig from the master server to your current working directory. The file `kubeconfig.yaml` is created. Run:
+### Control Plane server replacement
 
-```sh
-KUBECONFIG=kubeconfig.yaml kubectl get node
+Currently you should only replace the servers which didn't initialize the cluster.
+
+```shell
+terraform taint 'module.my_cluster.hcloud_server.control_plane["#1"]'
+terraform apply
 ```
-
-## Demo
-
-A demo application can be found in [manifests](manifests/hello-kubernetes.yaml). Run:
-
-```sh
-KUBECONFIG=kubeconfig.yaml kubectl apply -f manifests/hello-kubernetes.yaml
-```
-
-and try to access `http://<load-balancer-ip>:8080`.
-
-## Destroy your cluster
-
-If you no longer need the cluster don't forget to destroy it. Load-Balancers and volumes must be deleted manually.
-
-```sh
-terraform destroy
-```
-
-## Inputs
-
-| Name            | Description                   | Type   | Default      | Required |
-| --------------- | ----------------------------- | ------ | ------------ | -------- |
-| private_key     | Private ssh key               | string |              | true     |
-| public_key      | Public ssh key                | string |              | true     |
-| hcloud_token    | API token                     | string |              | true     |
-| k3s_version     | K3s version                   | string | v1.20.5+k3s1 | false    |
-| servers_num     | Number of control plane nodes | string | 2            | false    |
-| agents_num      | Number of agent nodes         | string | 2            | false    |
-| server_location | Prefered server location      | string | nbg1         | false    |
-
-## Outputs
-
-| Name                    | Description                                        | Type   |
-| ----------------------- | -------------------------------------------------- | ------ |
-| controlplanes_public_ip | The public IP addresses of the controlplane server | string |
-| agents_public_ip        | The public IP addresses of the agent server        | string |
 
 ## Auto-Upgrade
 
@@ -108,7 +113,7 @@ KUBECONFIG=kubeconfig.yaml kubectl label --all node k3s-upgrade=true
 KUBECONFIG=kubeconfig.yaml kubectl apply -f ./upgrade/server-plan.yaml
 ```
 
-**Warning:** Wait for completion [before you start upgrading your agents](https://github.com/k3s-io/k3s/issues/2996#issuecomment-788352375).
+> **Warning:** Wait for completion [before you start upgrading your agents](https://github.com/k3s-io/k3s/issues/2996#issuecomment-788352375).
 
 3. Run the plan for the **agents**.
 
@@ -135,9 +140,9 @@ sudo systemctl stop k3s
   --cluster-reset-restore-path=<PATH-TO-SNAPSHOT>
 ```
 
-**Warning:** This forget all peers and the server becomes the sole member of a new cluster. You have to manually rejoin all servers.
+> **Warning:** This forget all peers and the server becomes the sole member of a new cluster. You have to manually rejoin all servers.
 
-3. Connect you with the different servers backup and delete `/var/lib/rancher/k3s/server/db` on each peer etcd server and rejoin the nodes.
+3. Connect you with the different servers. Backup and delete `/var/lib/rancher/k3s/server/db` on each server.
 
 ```sh
 sudo systemctl stop k3s
@@ -145,22 +150,18 @@ rm -rf /var/lib/rancher/k3s/server/db
 sudo systemctl start k3s
 ```
 
-This will rejoin the server with the master server and seed the etcd store.
+This will rejoin the server one after another. After some time, all servers should be in sync again. Run `kubectl get node` to verify it.
 
-**Info:** It exists no official tool to automate the procedure. In future, rancher might provide an operator to handle this ([issue](https://github.com/k3s-io/k3s/issues/3174)).
+> **Info:** It exists no official tool to automate the procedure. In future, rancher might provide an operator to handle this ([issue](https://github.com/k3s-io/k3s/issues/3174)).
 
 ## Debugging
 
 Cloud init logs can be found on the remote machines in:
 
-- /var/log/cloud-init-output.log
-- /var/log/cloud-init.log
+- `/var/log/cloud-init-output.log`
+- `/var/log/cloud-init.log`
 - `journalctl -u k3s.service -e` last logs of the server
 - `journalctl -u k3s-agent.service -e` last logs of the agent
-
-## Known issues
-
-- Sometimes at cluster bootstrapping the Cloud-Controllers reports that some routes couldn't be created. This issue was fixed in master but wasn't released yet. Restart the cloud-controller pod and it will recreate them.
 
 ## Credits
 

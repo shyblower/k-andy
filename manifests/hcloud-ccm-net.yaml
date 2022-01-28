@@ -40,7 +40,7 @@ spec:
       serviceAccountName: cloud-controller-manager
       dnsPolicy: Default
       tolerations:
-        # this taint is set by all kubelets running "--cloud-provider=external"
+        # this taint is set by all kubelets running `--cloud-provider=external`
         # so we should tolerate it to schedule the cloud controller manager
         - key: "node.cloudprovider.kubernetes.io/uninitialized"
           value: "true"
@@ -49,12 +49,15 @@ spec:
           operator: "Exists"
         # cloud controller manages should be able to run on masters
         - key: "node-role.kubernetes.io/master"
+          operator: Exists
+          effect: NoSchedule
+        - key: "node-role.kubernetes.io/control-plane"
           effect: NoSchedule
         - key: "node.kubernetes.io/not-ready"
           effect: "NoSchedule"
       hostNetwork: true
       containers:
-        - image: hetznercloud/hcloud-cloud-controller-manager:v1.8.1
+        - image: hetznercloud/hcloud-cloud-controller-manager:v1.11.1
           name: hcloud-cloud-controller-manager
           command:
             - "/bin/hcloud-cloud-controller-manager"
@@ -82,5 +85,3 @@ spec:
                 secretKeyRef:
                   name: hcloud
                   key: network
-            - name: HCLOUD_LOAD_BALANCERS_ENABLED
-              value: "true"

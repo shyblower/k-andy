@@ -1,46 +1,31 @@
-resource "hcloud_server" "agents" {
-  count = var.agents_num
-  name  = "k3s-agent-${count.index}"
+module "agent_group" {
+  for_each = var.agent_groups
 
-  image       = data.hcloud_image.ubuntu.name
-  server_type = local.agent_server_type
-  location    = local.agent_locations[count.index][1]
+  source = "./modules/agent_group"
 
-  ssh_keys = [hcloud_ssh_key.default.id]
-  labels = {
-    provisioner = "terraform",
-    engine      = "k3s",
-    node_type   = "worker"
-  }
+  k3s_cluster_secret = random_password.k3s_cluster_secret.result
+  k3s_version        = var.k3s_version
 
-  user_data = <<-EOT
-  #cloud-config
-  runcmd:
-    - curl -sfL https://get.k3s.io | K3S_URL="https://${local.first_control_plane_ip}:6443" INSTALL_K3S_VERSION="${var.k3s_version}" K3S_TOKEN=${random_password.k3s_cluster_secret.result} sh -s - agent --kubelet-arg="cloud-provider=external"
-  EOT
+  cluster_name = var.name
+  group_name   = each.key
 
-  depends_on = [
-    # Control plane server must be created before the worker node can be attached
-    hcloud_server.first_control_plane
-  ]
+  server_locations = var.server_locations
 
-  provisioner "remote-exec" {
-    inline = [
-      "until systemctl is-active --quiet k3s-agent.service; do sleep 1; done"
-    ]
+  provisioning_ssh_key_id = hcloud_ssh_key.provision_public.id
+  ssh_private_key         = local.ssh_private_key
 
-    connection {
-      host        = self.ipv4_address
-      type        = "ssh"
-      user        = "root"
-      private_key = file(var.private_key)
-    }
-  }
-}
+  control_plane_ip = local.first_control_plane_ip
+  network_id       = hcloud_network.k3s.id
 
-resource "hcloud_server_network" "agents_network" {
-  count     = length(hcloud_server.agents)
-  server_id = hcloud_server.agents[count.index].id
-  subnet_id = hcloud_network_subnet.k3s_nodes.id
-  ip        = cidrhost(hcloud_network_subnet.k3s_nodes.ip_range, 2 + var.servers_num + count.index)
+  subnet_id       = hcloud_network_subnet.k3s_nodes.id
+  subnet_ip_range = hcloud_network_subnet.k3s_nodes.ip_range
+
+  ip_offset = each.value.ip_offset
+
+  server_count = each.value.count
+  server_type  = each.value.type
+
+  additional_packages = var.server_additional_packages
+
+  depends_on = [hcloud_server.first_control_plane]
 }
