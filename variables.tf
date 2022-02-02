@@ -93,6 +93,10 @@ variable "hcloud_csi_driver_version" {
   default = "v1.6.0"
 }
 
+variable "hcloud_ccm_version" {
+  default = "v1.12.1"
+}
+
 # Labels
 
 locals {
