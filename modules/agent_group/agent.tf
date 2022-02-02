@@ -16,7 +16,7 @@ resource "hcloud_server" "agent" {
   user_data = format("%s\n#%s\n%s", "#cloud-config", local.agent_pet_names[each.value], yamlencode(
     {
       runcmd = [
-        "curl -sfL https://get.k3s.io | K3S_URL='https://${var.control_plane_ip}:6443' INSTALL_K3S_VERSION='${var.k3s_version}' K3S_TOKEN='${var.k3s_cluster_secret}' sh -s - agent --kubelet-arg='cloud-provider=external'"
+        "curl -sfL https://get.k3s.io | K3S_URL='https://${var.control_plane_ip}:6443' INSTALL_K3S_VERSION='${var.k3s_version}' K3S_TOKEN='${var.k3s_cluster_secret}' sh -s - agent --kubelet-arg 'cloud-provider=external'"
       ]
       packages = var.additional_packages
     }
