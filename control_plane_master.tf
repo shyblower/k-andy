@@ -1,5 +1,9 @@
+locals {
+  first_control_plane_name = "${local.control_plane_name_base}0"
+}
+
 resource "hcloud_server" "first_control_plane" {
-  name = "${var.name}-control-plane-0"
+  name = local.first_control_plane_name
 
   image       = data.hcloud_image.ubuntu.name
   server_type = var.control_plane_server_type
