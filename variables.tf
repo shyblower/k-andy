@@ -86,7 +86,7 @@ variable "ssh_private_key_location" {
 
 variable "k3s_version" {
   description = "K3s version"
-  default     = "v1.21.3+k3s1"
+  default     = "v1.23.3+k3s1"
 }
 
 variable "hcloud_csi_driver_version" {
