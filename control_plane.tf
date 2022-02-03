@@ -19,7 +19,7 @@ resource "hcloud_server" "control_plane" {
   user_data = format("%s\n%s", "#cloud-config", yamlencode(
     {
       runcmd = [
-        "curl -sfL https://get.k3s.io | K3S_TOKEN='${random_password.k3s_cluster_secret.result}' INSTALL_K3S_VERSION='${var.k3s_version}' sh -s - server --server 'https://${local.first_control_plane_ip}:6443' ${local.k3s_setup_args}"
+        "curl -sfL https://get.k3s.io | K3S_TOKEN='${random_password.k3s_cluster_secret.result}' INSTALL_K3S_VERSION='${var.k3s_version}' sh -s - server --server 'https://${local.first_control_plane_ip}:6443' --node-ip ${cidrhost(hcloud_network_subnet.k3s_nodes.ip_range, each.value + 1)} ${local.k3s_setup_args}"
       ]
       packages = concat(local.server_base_packages, var.server_additional_packages)
     }
@@ -50,11 +50,4 @@ resource "hcloud_server" "control_plane" {
   depends_on = [
     hcloud_server.first_control_plane
   ]
-}
-
-resource "hcloud_server_network" "control_plane" {
-  for_each  = { for i in range(1, var.control_plane_server_count) : "#${i}" => i } // starts at 1 because master was 0
-  subnet_id = hcloud_network_subnet.k3s_nodes.id
-  server_id = hcloud_server.control_plane[each.key].id
-  ip        = cidrhost(hcloud_network_subnet.k3s_nodes.ip_range, each.value + 1)
 }

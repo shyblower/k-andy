@@ -17,11 +17,16 @@ resource "hcloud_server" "first_control_plane" {
   user_data = format("%s\n%s", "#cloud-config", yamlencode(
     {
       runcmd = [
-        "curl -sfL https://get.k3s.io | K3S_TOKEN='${random_password.k3s_cluster_secret.result}' INSTALL_K3S_VERSION='${var.k3s_version}' sh -s - server --cluster-init ${local.k3s_setup_args}"
+        "curl -sfL https://get.k3s.io | K3S_TOKEN='${random_password.k3s_cluster_secret.result}' INSTALL_K3S_VERSION='${var.k3s_version}' sh -s - server --cluster-init --node-ip ${local.first_control_plane_ip} ${local.k3s_setup_args}"
       ]
       packages = concat(local.server_base_packages, var.server_additional_packages)
     }
   ))
+
+  network {
+    network_id = local.network_id
+    ip         = local.first_control_plane_ip
+  }
 
   provisioner "remote-exec" {
     inline = [
@@ -46,10 +51,4 @@ resource "hcloud_server" "first_control_plane" {
     }
   }
 
-}
-
-resource "hcloud_server_network" "first_control_plane" {
-  subnet_id = hcloud_network_subnet.k3s_nodes.id
-  server_id = hcloud_server.first_control_plane.id
-  ip        = local.first_control_plane_ip
 }
