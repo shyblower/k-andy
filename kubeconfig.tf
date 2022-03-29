@@ -12,9 +12,9 @@ locals {
   kubeconfig_external = replace(data.remotefile.kubeconfig.content, "127.0.0.1", hcloud_server.first_control_plane.ipv4_address)
 }
 
-resource "local_file" "kubeconfig" {
+resource "local_sensitive_file" "kubeconfig" {
   count             = var.create_kubeconfig ? 1 : 0
-  sensitive_content = local.kubeconfig_external
+  content           = local.kubeconfig_external
   filename          = var.kubeconfig_filename == null ? "./kubeconfig-${var.name}.yaml" : var.kubeconfig_filename
   file_permission   = "400"
 }
